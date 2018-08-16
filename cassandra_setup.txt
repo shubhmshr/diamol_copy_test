@@ -164,7 +164,15 @@ session.execute(query)
 
 // Setup Cassandra Cluster in EC2.
 
-1. ssh -i ~/.aws/HadoopCluster.pem ec2-user@ec2-34-235-116-246.compute-1.amazonaws.com
+ssh -i ~/.aws/HadoopCluster.pem ec2-user@<ec2-instance>
+
+lsblk
+sudo file -s /dev/nvme1n1
+sudo mkfs -t ext4 /dev/nvme1n1
+sudo mkdir /var/lib/cassandra
+sudo mount /dev/nvme1n1 /var/lib/cassandra
+
+1. ssh -i ~/.aws/HadoopCluster.pem ec2-user@<ec2-instance>
 
 2. vi setup_cassandra.sh
 
@@ -188,16 +196,16 @@ sudo yum install cassandra -y
 
 4. sudo vi /etc/cassandra/conf/cassandra.yaml
 cluster_name: 'DataEng Cluster'
-seeds: "172.31.1.88"
-listen_address: 172.31.15.47
+listen_address: <private-ec2-instance>
+rpc_address: <private-ec2-instance>
 start_rpc: true
-rpc_address: 172.31.15.47
+seeds: "<private-ec2-instance>"
 endpoint_snitch: Ec2Snitch
 
 5. sudo service cassandra start
 6. sudo chkconfig cassandra on
 7. nodetool status
-8. cqlsh 172.31.1.88
+8. cqlsh <private-ec2-instance>
 9. Cassandra Logs Dir: tail -f /var/log/cassandra/cassandra.log
 
 cqlsh 172.31.1.88
@@ -265,7 +273,7 @@ CREATE TABLE adsystemdb.tbladvertiser
    payment_method TEXT,
    industry TEXT,
    agency_discount DOUBLE,
-   is_ad_agency    INT, 
+   is_ad_agency    BOOLEAN, 
    process_level TEXT,
    estimated_budget       DOUBLE, 
    first_revenue_date     DATE, 
@@ -280,4 +288,4 @@ CREATE TABLE adsystemdb.tbladvertiser
    employee_count TEXT, 
    last_updated TIMESTAMP, 
    PRIMARY KEY (id)
-) 
+);
