@@ -8,4 +8,5 @@ spark-submit \
 --num-executors=1 \
 --executor-cores=3 \
 --executor-memory=2G \
+--conf spark.eventLog.enabled=false \
 RealTime_Load-assembly-1.0-SNAPSHOT.jar -e=prod
