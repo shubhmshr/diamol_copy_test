@@ -84,6 +84,7 @@ bin/kafka-topics.sh --zookeeper <ec2-instance-1>:2181,<ec2-instance-2>:2181 --cr
 # To change retention for topic as well: 
 bin/kafka-configs.sh --zookeeper localhost --alter --entity-type topics --entity-name maxwell --add-config retention.ms=1800000
 
+bin/kafka-configs.sh --zookeeper localhost --alter --entity-type topics --entity-name maxwell --add-config message.timestamp.type=LogAppendTime
 
 # To change retention for topic as well: 
 bin/kafka-configs.sh --zookeeper localhost --alter --entity-type topics --entity-name maxwell --add-config retention.ms=1800000
