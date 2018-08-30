@@ -52,6 +52,9 @@ syncLimit=2
         # to enable communication change listeners to public dns name in each ec2 instance respectively
         listeners=PLAINTEXT://<ec2-instance-1>:9092
 
+        # Change the following property to allow kafka to produce timestamp
+        log.message.timestamp.type=LogAppendTime
+
         # log retention hours to save disk space
         log.retention.hours=1
 
@@ -81,6 +84,11 @@ bin/kafka-topics.sh --zookeeper <ec2-instance-1>:2181,<ec2-instance-2>:2181 --cr
 # To change retention for topic as well: 
 bin/kafka-configs.sh --zookeeper localhost --alter --entity-type topics --entity-name maxwell --add-config retention.ms=1800000
 
+
+# To change retention for topic as well: 
+bin/kafka-configs.sh --zookeeper localhost --alter --entity-type topics --entity-name maxwell --add-config retention.ms=1800000
+
+bin/kafka-configs.sh --zookeeper localhost --alter --entity-type topics --entity-name maxwell --add-config message.timestamp.type=LogAppendTime
 
 # List Topics
 bin/kafka-topics.sh --zookeeper <ec2-instance-1>:2181,<ec2-instance-2>:2181 --list
