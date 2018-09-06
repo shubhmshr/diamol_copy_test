@@ -74,11 +74,27 @@ nohup bin/zookeeper-server-start.sh config/zookeeper.properties > ~/zookeeper-lo
 
 
 # Start Kafka server
+change KAFKA_HEAP_OPTS="-Xmx3G -Xms3G" in bin/kafka-server-start.sh # To increase Java Heap Space
 nohup bin/kafka-server-start.sh config/server.properties > ~/kafka-logs 2>&1 &
 
 
+# Check list of all available brokers
+bin/zookeeper-shell.sh localhost:2181 <<< "ls /brokers/ids"
+
+
+# Describe Topic - Partition's Leaders should be distributed.
+bin/kafka-topics.sh --describe --zookeeper localhost:2181 --topic maxwell
+
+
 # Create Kafka Topic
-bin/kafka-topics.sh --zookeeper <ec2-instance-1>:2181,<ec2-instance-2>:2181 --create --topic maxwell --partitions 100 --replication-factor 2
+bin/kafka-topics.sh --zookeeper <ec2-instance-1>:2181,<ec2-instance-2>:2181 --create --topic maxwell --partitions 10 --replication-factor 2
+
+# Delete Kafka Topic
+bin/kafka-configs.sh --zookeeper localhost --alter --entity-type topics --entity-name maxwell --add-config delete.topic.enable=true
+bin/kafka-topics.sh --zookeeper <ec2-instance-1>:2181,<ec2-instance-2>:2181 --delete --topic maxwell
+bin/zookeeper-shell.sh localhost:2181 rmr /config/topics/maxwell
+bin/zookeeper-shell.sh localhost:2181 rmr /brokers/topics/maxwell
+bin/zookeeper-shell.sh localhost:2181 rmr /admin/delete_topics/maxwell
 
 
 # To change retention for topic as well: 
@@ -86,6 +102,7 @@ bin/kafka-configs.sh --zookeeper localhost --alter --entity-type topics --entity
 
 bin/kafka-configs.sh --zookeeper localhost --alter --entity-type topics --entity-name maxwell --add-config message.timestamp.type=LogAppendTime
 
+bin/kafka-configs.sh --zookeeper localhost --alter --entity-type topics --entity-name maxwell --add-config delete.topic.enable=true
 
 # List Topics
 bin/kafka-topics.sh --zookeeper <ec2-instance-1>:2181,<ec2-instance-2>:2181 --list
@@ -98,6 +115,19 @@ bin/kafka-console-producer.sh --broker-list <ec2-instance-1>:9092,<ec2-instance-
 # Start CLI Consumer
 bin/kafka-console-consumer.sh --bootstrap-server <ec2-instance-1>:9092,<ec2-instance-2>:9092 --topic test --from-beginning
 
+
+# Get latest offsets
+bin/kafka-run-class.sh kafka.tools.GetOffsetShell --broker-list <ec2-instance-1>:9092,<ec2-instance-2>:9092 --topic maxwell
+
+
+# Kafka CLI read from offset
+bin/kafka-simple-consumer-shell.sh --broker-list <ec2-instance-1>:9092,<ec2-instance-2>:9092 --topic maxwell --partition 9 --offset 13289626
+
+
+#Lightweight Kafka tool
+https://github.com/fgeller/kt
+
+kt consume -brokers <ec2-instance-1>:9092,<ec2-instance-2>:9092 -topic maxwell -offsets 9=13291854:13291855
 
 
 Useful Resource: https://aws.amazon.com/blogs/big-data/real-time-stream-processing-using-apache-spark-streaming-and-apache-kafka-on-aws/
