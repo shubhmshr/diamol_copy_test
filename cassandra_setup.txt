@@ -133,6 +133,11 @@ compaction = {'class': 'org.apache.cassandra.db.compaction.DateTieredCompactionS
 'base_time_seconds': '600', 'max_threshold': '32', 'min_threshold': '4', 'unchecked_tombstone_compaction': 'true',
 'tombstone_compaction_interval': '600', 'tombstone_threshold': '0.1', 'max_window_size_seconds': '600'};
 
+# Repair
+nodetool repair metadata kafka_metadata
+
+# Garbage Collect
+nodetool garbagecollect metadata kafka_metadata
 
 SELECT COUNT(*) FROM click_raw_data;
 SELECT SUM(click_count) FROM click_count_by_interval;
