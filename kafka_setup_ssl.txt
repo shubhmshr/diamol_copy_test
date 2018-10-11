@@ -1,0 +1,299 @@
+# ssh into box
+ssh -i ~/.aws/HadoopCluster.pem ec2-user@<ec2-instance>
+
+
+# Install Java 8
+wget --no-check-certificate --no-cookies --header "Cookie: oraclelicense=accept-securebackup-cookie" http://download.oracle.com/otn-pub/java/jdk/8u141-b15/336fa29ff2bb4ef291e347e091f7f4a7/jdk-8u141-linux-x64.rpm
+sudo yum install -y jdk-8u141-linux-x64.rpm
+java -version
+
+
+# Install Kafka
+1. wget http://www.gtlib.gatech.edu/pub/apache/kafka/2.0.0/kafka_2.11-2.0.0.tgz
+2. tar -xzf kafka_2.11-2.0.0.tgz
+3. rm kafka_2.11-2.0.0.tgz
+
+# Generate ssl certificates and self sign them
+1. cd kafka_2.11-2.0.0
+2. mkdir security
+3. vi ca.sh
+        # Generate CA Key and Certificate, use these ca-key and ca-cert files to sign all the certificates
+        openssl req -new -x509 -keyout ca-key -out ca-cert -days 3650
+
+4. sh ca.sh
+        Generating a 2048 bit RSA private key
+        ............................................................................................................+++
+        .................................+++
+        writing new private key to 'ca-key'
+        Enter PEM pass phrase:test1234
+        Verifying - Enter PEM pass phrase:test1234
+        -----
+        You are about to be asked to enter information that will be incorporated
+        into your certificate request.
+        What you are about to enter is what is called a Distinguished Name or a DN.
+        There are quite a few fields but you can leave some blank
+        For some fields there will be a default value,
+        If you enter '.', the field will be left blank.
+        -----
+        Country Name (2 letter code) [XX]:US
+        State or Province Name (full name) []:Texas
+        Locality Name (eg, city) [Default City]:Austin
+        Organization Name (eg, company) [Default Company Ltd]:example
+        Organizational Unit Name (eg, section) []:dataeng
+        Common Name (eg, your name or your server's hostname) []:Ajay Guyyala
+        Email Address []:test@example.com
+
+5. vi ssl.sh
+        capassword=$1
+
+        # Generate key and the certificate on each kafka broker
+        keytool -keystore kafka.server.keystore.jks -alias localhost -validity 3650 -genkey
+        
+        # Add CA to the server and client truststore so that they can trust this CA
+        keytool -keystore kafka.client.truststore.jks -alias CARoot -import -file ca-cert
+        keytool -keystore kafka.server.truststore.jks -alias CARoot -import -file ca-cert
+        
+        # Extract certificate from keystore
+        keytool -keystore kafka.server.keystore.jks -alias localhost -certreq -file cert-file
+        
+        # Sign the certificate using CA
+        openssl x509 -req -CA ca-cert -CAkey ca-key -in cert-file -out cert-signed -days 3650 -CAcreateserial -passin pass:${capassword}
+        
+        # Import normal and signed certificates to the truststore
+        keytool -keystore kafka.server.keystore.jks -alias CARoot -import -file ca-cert
+        keytool -keystore kafka.server.keystore.jks -alias localhost -import -file cert-signed
+
+6. sh ssl.sh test1234
+        Enter keystore password: test1234
+        Re-enter new password: test1234
+        What is your first and last name?
+          [Unknown]:  Ajay Guyyala
+        What is the name of your organizational unit?
+          [Unknown]:  dataeng
+        What is the name of your organization?
+          [Unknown]:  example
+        What is the name of your City or Locality?
+          [Unknown]:  Austin
+        What is the name of your State or Province?
+          [Unknown]:  Texas
+        What is the two-letter country code for this unit?
+          [Unknown]:  US
+        Is CN=Ajay Guyyala, OU=dataeng, O=example, L=Austin, ST=Texas, C=US correct?
+          [no]:  yes
+        
+        Enter key password for <localhost>
+                (RETURN if same as keystore password): <enter>
+        Enter keystore password: test1234
+        Re-enter new password: test1234
+        <...>
+        Trust this certificate? [no]:  yes
+        Certificate was added to keystore
+        Enter keystore password: test1234 
+        Re-enter new password: test1234
+        <...>
+        Trust this certificate? [no]:  yes
+        Certificate was added to keystore
+        Enter keystore password: test1234
+        <...>
+        Trust this certificate? [no]:  yes
+        Certificate was added to keystore
+        Enter keystore password: test1234 
+        Certificate reply was installed in keystore
+
+
+
+# Zookeeper Properties
+1. sudo mkdir -p /var/zookeeper/data
+2. sudo chown -R ec2-user /var/zookeeper
+3. vi kafka_2.11-2.0.0/config/zookeeper.properties
+
+        dataDir=/var/zookeeper/data
+        # the port at which the clients will connect
+        clientPort=2181
+        # disable the per-ip limit on the number of connections since this is a non-production config
+        maxClientCnxns=0
+        
+        server.1=<ec2-instance-1>:2888:3888
+        server.2=<ec2-instance-2>:2888:3888
+        # Add more servers if you want to
+        initLimit=5
+        syncLimit=2
+        
+        authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider
+
+4. On <ec2-instance-1> run echo "1" > /var/zookeeper/data/myid
+5. On <ec2-instance-2> run echo "2" > /var/zookeeper/data/myid
+6. Run above respective echo "no" cmd on all ec2-instances
+7. vi kafka_2.11-2.0.0/config/zookeeper_jaas.conf
+
+Server {
+       org.apache.zookeeper.server.auth.DigestLoginModule required
+       user_super="super-secret"
+       user_kafka="kafka-secret";
+};
+8. vi kafka_2.11-2.0.0/bin/zookeeper-server-start.sh
+        # Add these lines to the zookeeper server start script.
+        if [ "x$KAFKA_OPTS" = "x" ]; then
+                export KAFKA_OPTS="-Djava.security.auth.login.config=/home/ec2-user/kafka_2.11-2.0.0/config/zookeeper_jaas.conf"
+        fi
+
+
+
+
+# Kafka Properties
+1. sudo mkdir -p /var/kafka/data
+2. sudo chown -R ec2-user /var/kafka
+3. vi kafka_2.11-2.0.0/config/server.properties
+        # Change broker id in multi node cluster
+        broker.id={id}
+
+        # Change Log Dir
+        log.dirs=/var/kafka/data
+
+        # Change zookeeper connect string
+        zookeeper.connect=<ec2-instance-1>:2181,<ec2-instance-2>:2181
+
+        # to enable communication change listeners to public dns name in each ec2 instance respectively
+        listeners=PLAINTEXT://<ec2-instance-1>:9092,SSL://<ec2-instance-1>:9093,SASL_SSL://<ec2-instance-1>:9094
+
+
+        # Change the following property to allow kafka to produce timestamp
+        log.message.timestamp.type=LogAppendTime
+
+        # log retention hours to save disk space
+        log.retention.hours=1
+
+        # log retention check interval
+        log.retention.check.interval.ms=300000
+
+        # How much data you want to retain	
+        log.retention.bytes=134217728
+
+        # Each log segment size
+	log.segment.bytes=134217728
+
+        # Inter broker communication protocol
+        security.inter.broker.protocol=SASL_SSL
+        ssl.client.auth=required
+        sasl.mechanism.inter.broker.protocol=PLAIN
+        
+        # Do not check the FQDNS name
+        ssl.endpoint.identification.algorithm=
+        ssl.protocol=TLSv1.2
+        ssl.truststore.location=/home/ec2-user/kafka_2.11-2.0.0/security/kafka.server.truststore.jks
+        ssl.truststore.password=test1234
+        ssl.keystore.location=/home/ec2-user/kafka_2.11-2.0.0/security/kafka.server.keystore.jks
+        ssl.keystore.password=test1234
+        ssl.key.password=test1234
+        
+        # SASL props
+        sasl.enabled.mechanisms=PLAIN
+        authorizer.class.name=kafka.security.auth.SimpleAclAuthorizer
+        super.users=User:kafkabroker
+
+4. vi kafka_2.11-2.0.0/config/kafka_server_jaas.conf
+        KafkaServer {
+           org.apache.kafka.common.security.plain.PlainLoginModule required
+           username="kafkabroker"
+           password="kafkabroker-secret"
+           user_kafkabroker="kafkabroker-secret"
+           user_client1="client1-secret";
+        };
+        
+        
+        Client {
+           org.apache.zookeeper.server.auth.DigestLoginModule required
+           username="kafka"
+           password="kafka-secret";
+        };
+
+5. vi kafka_2.11-2.0.0/bin/kafka-server-start.sh
+        # Add these lines to the kafka server start script.
+        if [ "x$KAFKA_OPTS" = "x" ]; then
+                export KAFKA_OPTS="-Djava.security.auth.login.config=/home/ec2-user/kafka_2.11-2.0.0/config/kafka_server_jaas.conf"
+        fi
+
+        # To increase Java Heap Space, change KAFKA_HEAP_OPTS
+        export KAFKA_HEAP_OPTS="-Xmx3G -Xms3G"
+
+
+# Start Zookeeper
+nohup bin/zookeeper-server-start.sh config/zookeeper.properties > ~/zookeeper-logs 2>&1 &
+
+
+# Start Kafka server
+nohup bin/kafka-server-start.sh config/server.properties > ~/kafka-logs 2>&1 &
+
+
+# Check list of all available brokers
+bin/zookeeper-shell.sh localhost:2181 <<< "ls /brokers/ids"
+
+
+# Describe Topic - Partition's Leaders should be distributed.
+bin/kafka-topics.sh --describe --zookeeper localhost:2181 --topic maxwell
+
+
+# Create Kafka Topic
+bin/kafka-topics.sh --zookeeper <ec2-instance-1>:2181,<ec2-instance-2>:2181 --create --topic test --partitions 1 --replication-factor 1
+
+
+# Delete Kafka Topic
+bin/kafka-configs.sh --zookeeper localhost --alter --entity-type topics --entity-name maxwell --add-config delete.topic.enable=true
+bin/kafka-topics.sh --zookeeper <ec2-instance-1>:2181,<ec2-instance-2>:2181 --delete --topic maxwell
+bin/zookeeper-shell.sh localhost:2181 rmr /config/topics/maxwell
+bin/zookeeper-shell.sh localhost:2181 rmr /brokers/topics/maxwell
+bin/zookeeper-shell.sh localhost:2181 rmr /admin/delete_topics/maxwell
+
+
+# To change retention for topic as well: 
+bin/kafka-configs.sh --zookeeper localhost --alter --entity-type topics --entity-name maxwell --add-config retention.ms=1800000
+
+bin/kafka-configs.sh --zookeeper localhost --alter --entity-type topics --entity-name maxwell --add-config message.timestamp.type=LogAppendTime
+
+bin/kafka-configs.sh --zookeeper localhost --alter --entity-type topics --entity-name maxwell --add-config delete.topic.enable=true
+
+
+# List Topics
+bin/kafka-topics.sh --zookeeper <ec2-instance-1>:2181,<ec2-instance-2>:2181 --list
+
+
+# Grant permissions to the client using Kafka ACLS
+bin/kafka-acls.sh --authorizer-properties zookeeper.connect=localhost:2181 --add --allow-principal User:client1 --operation All --topic '*' --cluster
+
+bin/kafka-acls.sh --authorizer-properties zookeeper.connect=localhost:2181 --add --allow-principal User:client1 --topic '*' --consumer --group=*
+
+
+# client_security.properties
+vi client_security.properties
+        security.protocol=SASL_SSL
+        ssl.protocol=TLSv1.2
+        ssl.endpoint.identification.algorithm=
+        ssl.truststore.location=/Users/aguyyala/work/kafka/kafka_2.11-2.0.0/security/kafka.client.truststore.jks
+        ssl.truststore.password=test1234
+        sasl.mechanism=PLAIN
+        sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username=\"client1\"  password=\"client1-secret\";
+
+
+# Start CLI Producer
+bin/kafka-console-producer.sh --broker-list <ec2-instance-1>:9094 --topic test --producer.config client_security.properties
+
+
+# Start CLI Consumer
+bin/kafka-console-consumer.sh --bootstrap-server <ec2-instance-1>:9094 --topic test --consumer.config client_security.properties
+
+
+# Get latest offsets
+bin/kafka-run-class.sh kafka.tools.GetOffsetShell --broker-list <ec2-instance-1>:9092,<ec2-instance-2>:9092 --topic maxwell
+
+
+# Kafka CLI read from offset
+bin/kafka-simple-consumer-shell.sh --broker-list <ec2-instance-1>:9092,<ec2-instance-2>:9092 --topic maxwell --partition 9 --offset 13289626
+
+
+#Lightweight Kafka tool
+https://github.com/fgeller/kt
+
+kt consume -brokers <ec2-instance-1>:9092,<ec2-instance-2>:9092 -topic maxwell -offsets 9=13291854:13291855
+
+
+Useful Resource: https://aws.amazon.com/blogs/big-data/real-time-stream-processing-using-apache-spark-streaming-and-apache-kafka-on-aws/

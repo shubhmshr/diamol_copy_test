@@ -47,7 +47,7 @@ syncLimit=2
         log.dirs=/var/kafka/data
 
         # Change zookeeper connect string
-        zookeeper.connect=ec2-54-160-85-68.compute-1.amazonaws.com:2181,ec2-54-226-72-146.compute-1.amazonaws.com:2181
+        zookeeper.connect=<ec2-instance-1>:2181,<ec2-instance-2>:2181
 
         # to enable communication change listeners to public dns name in each ec2 instance respectively
         listeners=PLAINTEXT://<ec2-instance-1>:9092
