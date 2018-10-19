@@ -8,10 +8,10 @@ Install JNA: sudo yum install jna
 ssh -i ~/.aws/HadoopCluster.pem ec2-user@<ec2-instance>
 
 lsblk
-sudo file -s /dev/nvme0n1
-sudo mkfs -t ext4 /dev/nvme0n1
+sudo file -s /dev/nvme1n1
+sudo mkfs -t ext4 /dev/nvme1n1
 sudo mkdir /var/lib/cassandra
-sudo mount /dev/nvme0n1 /var/lib/cassandra
+sudo mount /dev/nvme1n1 /var/lib/cassandra
 sudo sysctl -w vm.max_map_count=1048575
 sudo chmod 777 /var/lib/cassandra
 rm -rf /var/lib/cassandra/lost+found
