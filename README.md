@@ -18,7 +18,8 @@ ran on EMR cluster and I installed zookeeper, kafka, cassandra, and dash on sing
 
 
 ## Real Time Data Flow
-Events (clickstream, IOT sensors, tweets etc) ==> Kafka (messaging queue) ==> Spark Streaming (Real Time ETL) ==> Cassandra (Datastore) ==> Dash (Real Time Dashboard)
+![Alt Text](https://github.com/aguyyala/real-time-analytics-dashboard/blob/master/data-flow.png)
+
 ![Alt Text](https://github.com/aguyyala/real-time-analytics-dashboard/blob/master/real-time-architecture.png)
 
 
