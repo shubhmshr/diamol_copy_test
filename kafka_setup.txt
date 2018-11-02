@@ -67,6 +67,9 @@ syncLimit=2
         # Each log segment size
 	log.segment.bytes=134217728
 
+        # Maximum message size broker/server will accept
+        message.max.bytes=15728640
+
 
 # Clean up existing dirs
 ps -ef | grep kafka | awk '{print $2}' | xargs kill -9
