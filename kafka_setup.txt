@@ -37,7 +37,7 @@ syncLimit=2
 
 # Start Kafka Server
 1. cd kafka_2.11-0.10.2.1/
-2. sudo mkdir /var/kafka/data
+2. sudo mkdir -p /var/kafka/data
 3. sudo chown -R ec2-user /var/kafka
 2. change following properties in config/server.properties:
         # Change broker id in multi node cluster
