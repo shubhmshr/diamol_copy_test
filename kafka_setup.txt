@@ -61,7 +61,7 @@ syncLimit=2
         # log retention check interval
         log.retention.check.interval.ms=300000
 
-        # How much data you want to retain	
+        # How much data you want to retain
         log.retention.bytes=134217728
 
         # Each log segment size
@@ -108,7 +108,7 @@ bin/zookeeper-shell.sh localhost:2181 rmr /brokers/topics/maxwell
 bin/zookeeper-shell.sh localhost:2181 rmr /admin/delete_topics/maxwell
 
 
-# To change retention for topic as well: 
+# To change retention for topic as well:
 bin/kafka-configs.sh --zookeeper localhost --alter --entity-type topics --entity-name maxwell --add-config retention.ms=1800000
 
 bin/kafka-configs.sh --zookeeper localhost --alter --entity-type topics --entity-name maxwell --add-config message.timestamp.type=LogAppendTime

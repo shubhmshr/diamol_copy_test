@@ -1,7 +1,7 @@
 package com.indeed.dataengineering.task
 
 /**
-  * Created by aguyyala on 10/19/17.
+  * Created by aguyyala.
   */
 
 import java.sql.Timestamp
