@@ -140,5 +140,6 @@ https://github.com/fgeller/kt
 
 kt consume -brokers <ec2-instance-1>:9092,<ec2-instance-2>:9092 -topic maxwell -offsets 9=13291854:13291855
 
+kafka-console-consumer.sh --bootstrap-server 10.104.0.10:9092,10.104.0.11:9092,10.104.0.12:9092 --topic maxwell --offset 431834503 --partition 0 --max-messages 1
 
 Useful Resource: https://aws.amazon.com/blogs/big-data/real-time-stream-processing-using-apache-spark-streaming-and-apache-kafka-on-aws/
