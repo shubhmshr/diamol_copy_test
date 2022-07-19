@@ -1,0 +1,1 @@
+# diamol_copy_test
